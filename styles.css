@@ -1,0 +1,333 @@
+/* ---------- Modal layout ---------- */
+
+.modal.keyfiler-modal {
+	width: min(1100px, 92vw);
+	height: min(680px, 82vh);
+	max-width: none;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.keyfiler-modal .modal-close-button,
+.keyfiler-modal .modal-header-button,
+.keyfiler-modal .modal-header {
+	display: none;
+}
+
+.keyfiler-root {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+/* ---------- Prompt line ---------- */
+
+.keyfiler-prompt {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.keyfiler-mode {
+	flex: none;
+	min-width: 1.6em;
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-bold);
+	text-align: center;
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+}
+
+.keyfiler-mode.keyfiler-mode-normal {
+	background-color: var(--color-green);
+}
+
+.keyfiler-mode.keyfiler-mode-prompt {
+	background-color: var(--color-orange);
+}
+
+.keyfiler-label {
+	flex: none;
+	max-width: 45%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-prompt input.keyfiler-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	font-size: var(--font-ui-medium);
+	padding: 0;
+}
+
+.keyfiler-prompt input.keyfiler-input:focus {
+	box-shadow: none;
+}
+
+.keyfiler-mode-normal:not(.keyfiler-prompting) .keyfiler-input {
+	caret-color: transparent;
+}
+
+/* ---------- Body ---------- */
+
+.keyfiler-body {
+	display: flex;
+	/* take the remaining height only; tall previews scroll instead of pushing the status line out */
+	flex: 1 1 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.keyfiler-list {
+	flex: 1 1 45%;
+	min-width: 0;
+	overflow-y: auto;
+	padding: var(--size-4-1) 0;
+}
+
+.keyfiler-preview {
+	flex: 1 1 55%;
+	min-width: 0;
+	overflow: auto;
+	padding: var(--size-4-3) var(--size-4-4);
+	border-left: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary-alt);
+}
+
+.keyfiler-no-preview .keyfiler-preview {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	.keyfiler-preview {
+		display: none;
+	}
+}
+
+.is-mobile .keyfiler-preview {
+	display: none;
+}
+
+/* ---------- Rows ---------- */
+
+.keyfiler-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: 3px var(--size-4-3);
+	cursor: pointer;
+	white-space: nowrap;
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-row.is-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.keyfiler-row.is-marked .keyfiler-name {
+	color: var(--text-accent);
+}
+
+.keyfiler-mark {
+	flex: none;
+	width: 0.8em;
+	color: var(--text-accent);
+	font-size: 0.7em;
+}
+
+.keyfiler-icon {
+	flex: none;
+	display: inline-flex;
+	color: var(--text-muted);
+}
+
+.keyfiler-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.keyfiler-name {
+	flex: none;
+	max-width: 70%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-normal);
+}
+
+.keyfiler-slash {
+	color: var(--text-faint);
+}
+
+.keyfiler-dir {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.keyfiler-match {
+	color: var(--text-accent);
+	font-weight: var(--font-bold);
+}
+
+.keyfiler-empty {
+	padding: var(--size-4-4);
+	color: var(--text-faint);
+	text-align: center;
+}
+
+/* ---------- Status line ---------- */
+
+.keyfiler-status {
+	flex: none;
+	display: flex;
+	gap: var(--size-4-4);
+	padding: var(--size-4-1) var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.keyfiler-marked-count {
+	color: var(--text-accent);
+}
+
+.keyfiler-hints {
+	margin-left: auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-faint);
+}
+
+/* ---------- Preview ---------- */
+
+.keyfiler-preview-md {
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-preview-img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	margin: 0 auto;
+	object-fit: contain;
+}
+
+.keyfiler-preview-text {
+	margin: 0;
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.keyfiler-preview-folder-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: 2px 0;
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-preview-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding-top: var(--size-4-8);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-preview-info-icon svg {
+	width: 48px;
+	height: 48px;
+}
+
+.keyfiler-preview-info-name {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.keyfiler-preview-empty {
+	color: var(--text-faint);
+}
+
+/* ---------- Settings ---------- */
+
+.keyfiler-keymap-help code {
+	font-size: 0.9em;
+}
+
+.keyfiler-keymap-header {
+	display: grid;
+	grid-template-columns: 1fr 13em 13em;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) 0;
+	margin-right: 5.2em;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.keyfiler-keymap-header span:not(:first-child) {
+	text-align: center;
+}
+
+.keyfiler-keymap-row .setting-item-control {
+	flex-wrap: nowrap;
+}
+
+.keyfiler-keymap-input {
+	width: 11em;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+}
+
+.keyfiler-keymap-input.keyfiler-invalid {
+	border-color: var(--text-error);
+	box-shadow: 0 0 0 1px var(--text-error);
+}
+
+.keyfiler-keymap-input.keyfiler-recording,
+.keyfiler-recording {
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+	color: var(--text-accent);
+}
+
+.keyfiler-conflicts:not(:empty) {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--text-warning);
+	color: var(--text-warning);
+	font-size: var(--font-ui-small);
+}
+
+.keyfiler-conflicts-title {
+	font-weight: var(--font-semibold);
+}
+
+.keyfiler-conflicts ul {
+	margin: var(--size-4-1) 0 0;
+	padding-left: 1.4em;
+}
