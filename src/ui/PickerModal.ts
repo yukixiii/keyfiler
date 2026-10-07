@@ -222,6 +222,7 @@ export abstract class PickerModal extends Modal {
 		this.pending = [];
 		this.modalEl.toggleClass("keyfiler-mode-normal", mode === "normal");
 		this.modalEl.toggleClass("keyfiler-mode-insert", mode === "insert");
+		if (mode === "normal" && this.plugin.settings.imeOffOnNormal) this.plugin.imeOff();
 		this.renderPromptLine();
 		this.renderStatus();
 	}

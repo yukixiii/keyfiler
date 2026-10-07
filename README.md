@@ -59,6 +59,9 @@ Marks survive folder changes: mark files, navigate to the destination, press `m`
 ## Notes
 
 - While an IME is composing (e.g. Japanese input), keys are never interpreted as commands.
+- Like vim's im-select, the IME is switched off when the picker enters Normal mode and whenever a file is opened
+  (desktop only). This runs the command in **Settings → Keyfiler → IME off command**: `fcitx5-remote -c` by default
+  on Linux; use e.g. `ibus engine xkb:us::eng` for IBus or `im-select com.apple.keylayout.ABC` on macOS.
 - While the picker is open, global Obsidian hotkeys are suppressed so `<C-n>`, `<C-p>`, `<C-f>` work as picker keys.
 - Rename / move use Obsidian's file manager, so internal links are updated according to
   **Settings → Files and links → Automatically update internal links**.

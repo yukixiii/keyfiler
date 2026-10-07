@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import { defaultImeOffCommand } from "./ime";
 import type KeyfilerPlugin from "./main";
 import {
 	ACTIONS,
@@ -21,6 +22,9 @@ export interface KeyfilerSettings {
 	maxResults: number;
 	openIn: "current" | "tab";
 	openAfterCreate: boolean;
+	imeOffOnNormal: boolean;
+	imeOffOnFileOpen: boolean;
+	imeOffCommand: string;
 	keymap: Keymap;
 }
 
@@ -30,6 +34,9 @@ export const DEFAULT_SETTINGS: KeyfilerSettings = {
 	maxResults: 200,
 	openIn: "current",
 	openAfterCreate: true,
+	imeOffOnNormal: true,
+	imeOffOnFileOpen: true,
+	imeOffCommand: defaultImeOffCommand(),
 	keymap: DEFAULT_KEYMAP,
 };
 
@@ -41,6 +48,9 @@ export function loadSettings(data: unknown): KeyfilerSettings {
 		maxResults: typeof d.maxResults === "number" && d.maxResults > 0 ? d.maxResults : DEFAULT_SETTINGS.maxResults,
 		openIn: d.openIn === "tab" ? "tab" : "current",
 		openAfterCreate: typeof d.openAfterCreate === "boolean" ? d.openAfterCreate : DEFAULT_SETTINGS.openAfterCreate,
+		imeOffOnNormal: typeof d.imeOffOnNormal === "boolean" ? d.imeOffOnNormal : DEFAULT_SETTINGS.imeOffOnNormal,
+		imeOffOnFileOpen: typeof d.imeOffOnFileOpen === "boolean" ? d.imeOffOnFileOpen : DEFAULT_SETTINGS.imeOffOnFileOpen,
+		imeOffCommand: typeof d.imeOffCommand === "string" ? d.imeOffCommand : DEFAULT_SETTINGS.imeOffCommand,
 		keymap: mergeKeymap(d.keymap),
 	};
 }
@@ -128,7 +138,55 @@ export class KeyfilerSettingTab extends PluginSettingTab {
 				}),
 			);
 
+		this.displayIme(containerEl);
 		this.displayKeymap(containerEl);
+	}
+
+	private displayIme(containerEl: HTMLElement): void {
+		const s = this.plugin.settings;
+		new Setting(containerEl).setName("IME").setHeading();
+
+		new Setting(containerEl)
+			.setName("Turn IME off in Normal mode")
+			.setDesc("Switch the IME off when the picker enters Normal mode (e.g. Esc after typing Japanese), like vim's im-select.")
+			.addToggle((t) =>
+				t.setValue(s.imeOffOnNormal).onChange(async (v) => {
+					s.imeOffOnNormal = v;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName("Turn IME off when a file is opened")
+			.setDesc("Switch the IME off whenever a file is opened in Obsidian, by any means.")
+			.addToggle((t) =>
+				t.setValue(s.imeOffOnFileOpen).onChange(async (v) => {
+					s.imeOffOnFileOpen = v;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		const desc = createFragment((f) => {
+			f.appendText("Shell command that switches the IME off. Examples: ");
+			f.createEl("code", { text: "fcitx5-remote -c" });
+			f.appendText(" (fcitx5), ");
+			f.createEl("code", { text: "ibus engine xkb:us::eng" });
+			f.appendText(" (IBus), ");
+			f.createEl("code", { text: "im-select com.apple.keylayout.ABC" });
+			f.appendText(" (macOS). Leave empty to disable. Desktop only.");
+		});
+		new Setting(containerEl)
+			.setName("IME off command")
+			.setDesc(desc)
+			.addText((t) =>
+				t
+					.setPlaceholder("fcitx5-remote -c")
+					.setValue(s.imeOffCommand)
+					.onChange(async (v) => {
+						s.imeOffCommand = v.trim();
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 
 	private displayKeymap(containerEl: HTMLElement): void {
