@@ -135,3 +135,30 @@ describe("conflicts and merge", () => {
 		expect(mergeKeymap(undefined)).toEqual(DEFAULT_KEYMAP);
 	});
 });
+
+describe("grep scope", () => {
+	const grep = compileKeymap(DEFAULT_KEYMAP, scopesFor("grep"));
+	const find = compileKeymap(DEFAULT_KEYMAP, scopesFor("find"));
+	const browser = compileKeymap(DEFAULT_KEYMAP, scopesFor("browser"));
+
+	it("shares multi-scope actions", () => {
+		expect(resolve(grep, "normal", [], "b").action).toBe("revealInBrowser");
+		expect(resolve(find, "normal", [], "b").action).toBe("revealInBrowser");
+		expect(resolve(browser, "normal", [], "b").action).toBeNull();
+	});
+
+	it("resolves picker-specific grep keys", () => {
+		expect(resolve(grep, "insert", [], "<C-r>").action).toBe("toggleRegex");
+		expect(resolve(grep, "insert", [], "<C-f>").action).toBe("grepToFind");
+		expect(resolve(find, "insert", [], "<C-g>").action).toBe("switchToGrep");
+		expect(resolve(browser, "normal", [], "s").action).toBe("grepInFolder");
+		expect(resolve(browser, "normal", [], "R").action).toBeNull();
+	});
+
+	it("detects conflicts with a multi-scope action", () => {
+		const km = mergeKeymap({ toggleRegex: { insert: ["<A-b>"], normal: ["R"] } });
+		expect(findConflicts(km)).toContainEqual({ mode: "insert", kind: "duplicate", keys: "<A-b>", actions: ["revealInBrowser", "toggleRegex"] });
+		const km2 = mergeKeymap({ create: { insert: ["<A-c>"], normal: ["b"] } });
+		expect(findConflicts(km2)).toEqual([]);
+	});
+});

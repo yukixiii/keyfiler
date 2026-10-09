@@ -101,6 +101,7 @@
 }
 
 .keyfiler-preview {
+	position: relative;
 	flex: 1 1 55%;
 	min-width: 0;
 	overflow: auto;
@@ -194,6 +195,53 @@
 	text-align: center;
 }
 
+/* ---------- Grep rows ---------- */
+
+.keyfiler-grep-loc {
+	flex: none;
+	display: flex;
+	max-width: 45%;
+	overflow: hidden;
+}
+
+/* shrink the folder part first so name:line stays visible */
+.keyfiler-grep-loc .keyfiler-dir {
+	flex: 0 1000 auto;
+	min-width: 0;
+	font-size: inherit;
+}
+
+.keyfiler-grep-loc .keyfiler-name {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: none;
+}
+
+.keyfiler-grep-lnum {
+	flex: none;
+	color: var(--text-faint);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+}
+
+.keyfiler-grep-text {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-muted);
+}
+
+.keyfiler-grep-state {
+	color: var(--text-faint);
+}
+
+.keyfiler-grep-error {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-error);
+}
+
 /* ---------- Status line ---------- */
 
 .keyfiler-status {
@@ -237,6 +285,35 @@
 .keyfiler-preview-text {
 	margin: 0;
 	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.keyfiler-preview-lines {
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+}
+
+.keyfiler-preview-line {
+	display: flex;
+	gap: var(--size-4-3);
+}
+
+.keyfiler-preview-line.is-hit {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.keyfiler-preview-lineno {
+	flex: none;
+	color: var(--text-faint);
+	white-space: pre;
+	user-select: none;
+}
+
+.keyfiler-preview-linetext {
+	min-width: 0;
 	white-space: pre-wrap;
 	word-break: break-all;
 }

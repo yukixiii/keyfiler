@@ -1,5 +1,6 @@
-import { Modal, Notice, Scope, TAbstractFile, TFile, TFolder, prepareFuzzySearch, setIcon } from "obsidian";
+import { MarkdownView, Modal, Notice, Scope, TAbstractFile, TFile, TFolder, WorkspaceLeaf, prepareFuzzySearch, setIcon } from "obsidian";
 import type KeyfilerPlugin from "../main";
+import { renderHighlighted } from "./highlight";
 import { Preview } from "./preview";
 import {
 	ACTIONS,
@@ -10,6 +11,7 @@ import {
 	type ActionId,
 	type CompiledKeymap,
 	type Mode,
+	type PickerKind,
 } from "./keymap";
 
 export interface Result {
@@ -17,7 +19,18 @@ export interface Result {
 	/** Text the query was matched against, and matched [start, end) ranges within it. */
 	text: string;
 	matches: [number, number][];
+	/** 0-based line in the file the result points at (grep hits). */
+	line?: number;
 }
+
+/** Where to put the cursor after opening a file: `line`, columns [from, to). */
+export interface JumpTarget {
+	line: number;
+	from: number;
+	to: number;
+}
+
+export { renderHighlighted };
 
 /** Returned by an action to let the key fall through to the input's default behavior. */
 export const PASS = Symbol("pass");
@@ -63,7 +76,7 @@ export abstract class PickerModal extends Modal {
 	private pending: string[] = [];
 	private initialQuery: string;
 
-	protected abstract readonly pickerKind: "browser" | "find";
+	protected abstract readonly pickerKind: PickerKind;
 
 	constructor(
 		protected plugin: KeyfilerPlugin,
@@ -100,6 +113,24 @@ export abstract class PickerModal extends Modal {
 	protected sortForQuery(results: (Result & { score: number; nameHit: boolean })[]): Result[] {
 		return results.sort((a, b) => Number(b.nameHit) - Number(a.nameHit) || b.score - a.score);
 	}
+
+	/** Show `result` in the preview pane. */
+	protected showPreview(result: Result | null): void {
+		this.preview?.show(result?.file ?? null);
+	}
+
+	/** Text shown when there are no results. */
+	protected emptyText(): string {
+		return this.items.length === 0 ? "(empty)" : "No matches";
+	}
+
+	/** Cursor position for an opened file; `result` is the row it was opened from, if any. */
+	protected jumpTarget(_file: TFile, _result?: Result): JumpTarget | undefined {
+		return undefined;
+	}
+
+	/** Append picker-specific status (between the counters and the key hints). */
+	protected renderStatusExtra(_el: HTMLElement): void {}
 
 	// ---- lifecycle --------------------------------------------------------------
 
@@ -185,6 +216,12 @@ export abstract class PickerModal extends Modal {
 			}
 			this.results = this.sortForQuery(scored);
 		}
+		this.setResults(this.results, resetCursor, focusPath);
+	}
+
+	/** Replace the results, placing the cursor on `focusPath`, at the top, or where it was. */
+	protected setResults(results: Result[], resetCursor: boolean, focusPath?: string): void {
+		this.results = results;
 		if (focusPath) {
 			const i = this.results.findIndex((r) => r.file.path === focusPath);
 			this.cursor = i >= 0 ? i : Math.min(this.cursor, Math.max(0, this.results.length - 1));
@@ -246,7 +283,7 @@ export abstract class PickerModal extends Modal {
 		const max = this.plugin.settings.maxResults;
 		const shown = this.results.slice(0, max);
 		if (shown.length === 0) {
-			this.listEl.createDiv({ cls: "keyfiler-empty", text: this.items.length === 0 ? "(empty)" : "No matches" });
+			this.listEl.createDiv({ cls: "keyfiler-empty", text: this.emptyText() });
 		}
 		shown.forEach((result, i) => {
 			const row = this.listEl.createDiv({ cls: "keyfiler-row" });
@@ -268,7 +305,7 @@ export abstract class PickerModal extends Modal {
 		const rows = this.listEl.querySelectorAll<HTMLElement>(".keyfiler-row");
 		rows.forEach((row, i) => row.toggleClass("is-selected", i === this.cursor));
 		rows[this.cursor]?.scrollIntoView({ block: "nearest" });
-		this.preview?.show(this.current());
+		this.showPreview(this.results[this.cursor] ?? null);
 		this.renderStatus();
 	}
 
@@ -280,15 +317,13 @@ export abstract class PickerModal extends Modal {
 		count.setText(total > 0 ? `${this.cursor + 1}/${total}` : "0/0");
 		if (total > this.plugin.settings.maxResults) count.appendText(` (showing ${this.plugin.settings.maxResults})`);
 		if (this.marked.size > 0) this.statusEl.createSpan({ cls: "keyfiler-marked-count", text: `● ${this.marked.size} marked` });
+		this.renderStatusExtra(this.statusEl);
 		const hints = this.statusEl.createSpan({ cls: "keyfiler-hints" });
 		if (this.prompt) {
 			hints.setText(this.prompt.kind === "confirm" ? "y: yes · any other key: cancel" : "Enter: confirm · Esc: cancel");
 			return;
 		}
-		const hintActions: ActionId[] =
-			this.pickerKind === "browser"
-				? ["open", "goParent", "toggleMarkNext", "create", "rename", "moveMarked", "copyMarked", "delete", "switchToFind"]
-				: ["open", "openTab", "openVsplit", "toggleMarkNext", "revealInBrowser"];
+		const hintActions = HINT_ACTIONS[this.pickerKind];
 		const parts: string[] = [];
 		for (const a of hintActions) {
 			const key = this.compiled[this.mode].find((b) => b.action === a)?.seq.join("");
@@ -484,12 +519,12 @@ export abstract class PickerModal extends Modal {
 			return;
 		}
 		if (cur instanceof TFile) {
-			void this.openFile(cur, how);
+			void this.openFile(cur, how, this.results[this.cursor]);
 			this.close();
 		}
 	}
 
-	protected async openFile(file: TFile, how: OpenHow): Promise<void> {
+	protected async openFile(file: TFile, how: OpenHow, result?: Result): Promise<void> {
 		const ws = this.app.workspace;
 		const leaf =
 			how === "tab"
@@ -499,10 +534,29 @@ export abstract class PickerModal extends Modal {
 					: how === "hsplit"
 						? ws.getLeaf("split", "horizontal")
 						: ws.getLeaf(false);
-		await leaf.openFile(file);
+		const target = this.jumpTarget(file, result);
+		await leaf.openFile(file, target ? { eState: { line: target.line } } : undefined);
 		ws.setActiveLeaf(leaf, { focus: true });
+		if (target) jumpTo(leaf, target);
 	}
 }
+
+/** Put the editor cursor on `target` and scroll it to the middle of the view. */
+function jumpTo(leaf: WorkspaceLeaf, target: JumpTarget): void {
+	const view = leaf.view;
+	if (!(view instanceof MarkdownView) || view.getMode() !== "source") return;
+	const { editor } = view;
+	const from = { line: target.line, ch: target.from };
+	// A collapsed cursor (not a selection) so vim mode stays in Normal mode.
+	editor.setCursor(from);
+	editor.scrollIntoView({ from, to: { line: target.line, ch: target.to } }, true);
+}
+
+const HINT_ACTIONS: Record<PickerKind, ActionId[]> = {
+	browser: ["open", "goParent", "toggleMarkNext", "create", "rename", "moveMarked", "copyMarked", "delete", "switchToFind", "grepInFolder"],
+	find: ["open", "openTab", "openVsplit", "toggleMarkNext", "revealInBrowser", "switchToGrep"],
+	grep: ["open", "openTab", "openVsplit", "toggleMarkNext", "toggleRegex", "grepToFind", "revealInBrowser"],
+};
 
 function iconFor(file: TAbstractFile): string {
 	if (file instanceof TFolder) return "folder";
@@ -551,21 +605,11 @@ function shortName(a: ActionId): string {
 		copyMarked: "copy",
 		delete: "delete",
 		switchToFind: "find",
+		grepInFolder: "grep",
+		switchToGrep: "grep",
+		toggleRegex: "regex",
+		grepToFind: "find",
 		revealInBrowser: "browse",
 	};
 	return names[a] ?? a;
-}
-
-/** Append `text` to `el`, wrapping matched ranges (relative to `offset`) in highlight spans. */
-export function renderHighlighted(el: HTMLElement, text: string, matches: [number, number][], offset = 0): void {
-	let pos = 0;
-	for (const [s0, e0] of matches) {
-		const s = Math.max(0, s0 - offset);
-		const e = Math.min(text.length, e0 - offset);
-		if (e <= s || s < pos) continue;
-		el.appendText(text.slice(pos, s));
-		el.createSpan({ cls: "keyfiler-match", text: text.slice(s, e) });
-		pos = e;
-	}
-	el.appendText(text.slice(pos));
 }

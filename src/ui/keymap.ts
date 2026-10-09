@@ -1,11 +1,13 @@
 // Pure keymap logic. Must not import from "obsidian" so it can be unit-tested.
 
 export type Mode = "insert" | "normal";
-export type ActionScope = "common" | "browser" | "find";
+export type ActionScope = "common" | "browser" | "find" | "grep";
+export type PickerKind = Exclude<ActionScope, "common">;
 
 export interface ActionDef {
 	desc: string;
-	scope: ActionScope;
+	/** Pickers the action is available in ("common" = all). */
+	scope: ActionScope | readonly ActionScope[];
 }
 
 export const ACTIONS = {
@@ -27,7 +29,10 @@ export const ACTIONS = {
 	toNormal: { desc: "Switch to Normal mode", scope: "common" },
 	toInsert: { desc: "Switch to Insert mode", scope: "common" },
 	close: { desc: "Close", scope: "common" },
-	revealInBrowser: { desc: "Open file browser at the item's folder", scope: "find" },
+	revealInBrowser: { desc: "Open file browser at the item's folder", scope: ["find", "grep"] },
+	switchToGrep: { desc: "Grep in the same scope (keeps the query)", scope: "find" },
+	toggleRegex: { desc: "Toggle regular expression mode", scope: "grep" },
+	grepToFind: { desc: "Find files in the same scope (keeps the query)", scope: "grep" },
 	goParent: { desc: "Go to parent folder (Backspace only when query is empty)", scope: "browser" },
 	create: { desc: "Create file / folder (trailing / = folder)", scope: "browser" },
 	rename: { desc: "Rename item", scope: "browser" },
@@ -37,6 +42,7 @@ export const ACTIONS = {
 	goRoot: { desc: "Go to vault root", scope: "browser" },
 	goCurrent: { desc: "Go to folder of the active file", scope: "browser" },
 	switchToFind: { desc: "Find files under current folder", scope: "browser" },
+	grepInFolder: { desc: "Grep under current folder", scope: "browser" },
 } as const satisfies Record<string, ActionDef>;
 
 export type ActionId = keyof typeof ACTIONS;
@@ -68,6 +74,9 @@ export const DEFAULT_KEYMAP: Keymap = {
 	toInsert: { insert: [], normal: ["i", "a", "/"] },
 	close: { insert: ["<C-c>"], normal: ["<Esc>", "q"] },
 	revealInBrowser: { insert: ["<A-b>"], normal: ["b"] },
+	switchToGrep: { insert: ["<C-g>"], normal: ["s"] },
+	toggleRegex: { insert: ["<C-r>"], normal: ["R"] },
+	grepToFind: { insert: ["<C-f>"], normal: ["f"] },
 	goParent: { insert: ["<C-h>", "<BS>"], normal: ["h", "-", "<BS>"] },
 	create: { insert: ["<A-c>"], normal: ["c"] },
 	rename: { insert: ["<A-r>"], normal: ["r"] },
@@ -77,6 +86,7 @@ export const DEFAULT_KEYMAP: Keymap = {
 	goRoot: { insert: ["<A-e>"], normal: ["e"] },
 	goCurrent: { insert: ["<A-w>"], normal: ["w"] },
 	switchToFind: { insert: ["<C-f>"], normal: ["f"] },
+	grepInFolder: { insert: ["<C-g>"], normal: ["s"] },
 };
 
 // ---------------------------------------------------------------------------
@@ -232,15 +242,21 @@ export interface CompiledBinding {
 }
 export type CompiledKeymap = Record<Mode, CompiledBinding[]>;
 
-export function scopesFor(picker: "browser" | "find"): ActionScope[] {
+export function scopesFor(picker: PickerKind): ActionScope[] {
 	return ["common", picker];
+}
+
+/** Scopes of an action as a list. */
+export function actionScopes(id: ActionId): readonly ActionScope[] {
+	const scope: ActionDef["scope"] = ACTIONS[id].scope;
+	return typeof scope === "string" ? [scope] : scope;
 }
 
 /** Compile a keymap for the given action scopes. Invalid notations are skipped. */
 export function compileKeymap(keymap: Keymap, scopes: ActionScope[]): CompiledKeymap {
 	const out: CompiledKeymap = { insert: [], normal: [] };
 	for (const id of ACTION_IDS) {
-		if (!scopes.includes(ACTIONS[id].scope)) continue;
+		if (!actionScopes(id).some((s) => scopes.includes(s))) continue;
 		for (const mode of ["insert", "normal"] as Mode[]) {
 			for (const n of keymap[id]?.[mode] ?? []) {
 				const seq = parseSequence(n);
@@ -297,8 +313,10 @@ export interface Conflict {
 	actions: ActionId[];
 }
 
-function scopesOverlap(a: ActionScope, b: ActionScope): boolean {
-	return a === b || a === "common" || b === "common";
+function scopesOverlap(a: ActionId, b: ActionId): boolean {
+	const sa = actionScopes(a);
+	const sb = actionScopes(b);
+	return sa.includes("common") || sb.includes("common") || sa.some((s) => sb.includes(s));
 }
 
 /** Find duplicate bindings and prefix conflicts between actions that can be active together. */
@@ -317,7 +335,7 @@ export function findConflicts(keymap: Keymap): Conflict[] {
 				const a = entries[i];
 				const b = entries[j];
 				if (a.action === b.action) continue;
-				if (!scopesOverlap(ACTIONS[a.action].scope, ACTIONS[b.action].scope)) continue;
+				if (!scopesOverlap(a.action, b.action)) continue;
 				if (seqEq(a.seq, b.seq)) {
 					conflicts.push({ mode, kind: "duplicate", keys: a.seq.join(""), actions: [a.action, b.action] });
 				} else if (isPrefix(a.seq, b.seq) || isPrefix(b.seq, a.seq)) {

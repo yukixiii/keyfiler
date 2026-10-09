@@ -1,6 +1,6 @@
 # Keyfiler
 
-Keyboard-driven fuzzy file finder and file browser for Obsidian, with a telescope.nvim-like feel:
+Keyboard-driven fuzzy file finder, live full-text grep and file browser for Obsidian, with a telescope.nvim-like feel:
 vim-style Insert / Normal modes, a live preview, multi-select, and file operations — all without the mouse.
 
 ## Commands
@@ -10,6 +10,8 @@ Assign hotkeys in **Settings → Hotkeys** (none are set by default).
 | Command | Description |
 |---|---|
 | `Keyfiler: Find files` | Fuzzy-find any file in the vault (md, images, PDF, canvas, …). Recent files come first. |
+| `Keyfiler: Grep` | Search note contents as you type (like telescope's live_grep); one row per matching line. |
+| `Keyfiler: Grep selected text` | Grep for the editor selection (first line), or the word under the cursor. |
 | `Keyfiler: File browser (current folder)` | Browse starting from the active file's folder. |
 | `Keyfiler: File browser (vault root)` | Browse starting from the vault root. |
 
@@ -47,6 +49,7 @@ With files marked, the open actions open every marked file.
 | `<A-d>` | `d` | Delete marked items (or the item under the cursor) to trash, after `y/N` |
 | `<A-e>` / `<A-w>` | `e` / `w` | Go to vault root / active file's folder |
 | `<C-f>` | `f` | Find files under the current folder |
+| `<C-g>` | `s` | Grep under the current folder |
 
 Marks survive folder changes: mark files, navigate to the destination, press `m`.
 
@@ -55,6 +58,25 @@ Marks survive folder changes: mark files, navigate to the destination, press `m`
 | Insert | Normal | Action |
 |---|---|---|
 | `<A-b>` | `b` | Open the file browser at the selected file's folder |
+| `<C-g>` | `s` | Grep in the same folder, keeping the query |
+
+### Grep
+
+| Insert | Normal | Action |
+|---|---|---|
+| `<C-r>` | `R` | Toggle regular expression mode |
+| `<C-f>` | `f` | Find files in the same folder, keeping the query |
+| `<A-b>` | `b` | Open the file browser at the selected file's folder |
+
+- Searches Markdown and plain-text files (`txt`, `json`, `canvas`, `csv`, `js`, `css`, `yaml`, …), skipping
+  **Excluded files**. Recently opened files come first.
+- The query is literal and **smart case**: case-insensitive unless it contains an uppercase letter.
+  In regex mode it is a JavaScript regular expression; while it is invalid, the previous results stay and the
+  error is shown in the status line.
+- Results stream in as files are searched; the search stops at 2000 matching lines.
+- Opening a result puts the cursor on the match (`<C-v>` / `<C-x>` / `<C-t>` work too). With files marked,
+  each marked file opens at its first match. The preview shows the lines around the match.
+- File contents are cached between searches and revalidated by modification time.
 
 ## Notes
 
@@ -73,7 +95,7 @@ Marks survive folder changes: mark files, navigate to the destination, press `m`
 npm install
 npm run dev     # watch build
 npm run build   # type-check + production build
-npm test        # unit tests (keymap / path helpers)
+npm test        # unit tests (keymap / path / grep helpers)
 ```
 
 Copy or symlink `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/keyfiler/`.

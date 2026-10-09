@@ -5,6 +5,7 @@ import { PASS, PickerModal, renderHighlighted, type ActionOutcome, type PickerOp
 import type { ActionId } from "../ui/keymap";
 import { joinPath, parentPath, parseNewEntry, parseRename, splitExt } from "../util/path";
 import { FindFilesModal } from "./FindFiles";
+import { GrepModal } from "./Grep";
 
 export interface FileBrowserOptions extends PickerOptions {
 	/** Folder to start in. Defaults to the vault root. */
@@ -90,6 +91,10 @@ export class FileBrowserModal extends PickerModal {
 			case "switchToFind":
 				this.close();
 				new FindFilesModal(this.plugin, { root: this.cwd.path, marked: this.marked }).open();
+				return;
+			case "grepInFolder":
+				this.close();
+				new GrepModal(this.plugin, { root: this.cwd.path, marked: this.marked }).open();
 				return;
 			default:
 				return false;
@@ -192,4 +197,11 @@ export class FileBrowserModal extends PickerModal {
 			this.refresh();
 		});
 	}
+}
+
+/** Open the file browser at `item`'s folder with the cursor on it, carrying `marked` over. */
+export function revealInBrowser(plugin: KeyfilerPlugin, item: TAbstractFile | null, marked: Set<string>): void {
+	const target = item ? plugin.app.vault.getAbstractFileByPath(parentPath(item.path)) : null;
+	const folder = target instanceof TFolder ? target : plugin.app.vault.getRoot();
+	new FileBrowserModal(plugin, { folder, focus: item instanceof TFile ? item.path : undefined, marked }).open();
 }

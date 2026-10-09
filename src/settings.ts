@@ -5,13 +5,13 @@ import {
 	ACTIONS,
 	ACTION_IDS,
 	DEFAULT_KEYMAP,
+	actionScopes,
 	eventToString,
 	findConflicts,
 	mergeKeymap,
 	parseSequence,
 	splitNotations,
 	type ActionId,
-	type ActionScope,
 	type Keymap,
 	type Mode,
 } from "./ui/keymap";
@@ -55,11 +55,14 @@ export function loadSettings(data: unknown): KeyfilerSettings {
 	};
 }
 
-const SCOPE_TITLES: Record<ActionScope, string> = {
-	common: "Common",
-	find: "Find files only",
-	browser: "File browser only",
-};
+/** Keymap sections, keyed by an action's scopes joined with "+". */
+const SECTIONS: [string, string][] = [
+	["common", "Common"],
+	["find", "Find files only"],
+	["grep", "Grep only"],
+	["find+grep", "Find files / Grep"],
+	["browser", "File browser only"],
+];
 
 export class KeyfilerSettingTab extends PluginSettingTab {
 	private conflictsEl: HTMLElement | null = null;
@@ -223,13 +226,16 @@ export class KeyfilerSettingTab extends PluginSettingTab {
 		this.conflictsEl = containerEl.createDiv({ cls: "keyfiler-conflicts" });
 		this.renderConflicts();
 
-		for (const scope of ["common", "find", "browser"] as ActionScope[]) {
-			new Setting(containerEl).setName(SCOPE_TITLES[scope]).setHeading();
+		const sectionOf = (id: ActionId) => actionScopes(id).join("+");
+		for (const [key, title] of SECTIONS) {
+			const ids = ACTION_IDS.filter((a) => sectionOf(a) === key);
+			if (ids.length === 0) continue;
+			new Setting(containerEl).setName(title).setHeading();
 			const header = containerEl.createDiv({ cls: "keyfiler-keymap-header" });
 			header.createSpan({ text: "Action" });
 			header.createSpan({ text: "Insert mode" });
 			header.createSpan({ text: "Normal mode" });
-			for (const id of ACTION_IDS.filter((a) => ACTIONS[a].scope === scope)) {
+			for (const id of ids) {
 				this.renderActionRow(containerEl, id);
 			}
 		}
