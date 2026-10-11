@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { installToVaults } from "./scripts/install-to-vaults.mjs";
 
 const prod = process.argv[2] === "production";
 
@@ -30,6 +31,7 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	plugins: [installToVaults],
 });
 
 if (prod) {

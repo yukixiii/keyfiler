@@ -98,4 +98,17 @@ npm run build   # type-check + production build
 npm test        # unit tests (keymap / path / grep helpers)
 ```
 
-Copy or symlink `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/keyfiler/`.
+Builds install themselves into every vault on this machine (listed in Obsidian's `obsidian.json`)
+that already has a `<vault>/.obsidian/plugins/keyfiler/` folder — create that folder once to opt a vault in.
+Only `main.js`, `manifest.json` and `styles.css` are copied; the vault's `data.json` is left alone.
+Set `OBSIDIAN_VAULTS` (`;`-separated on Windows) to pick vaults explicitly.
+
+### Release (other machines)
+
+```sh
+npm version patch   # bumps package.json, manifest.json, versions.json and tags (no "v" prefix)
+git push --follow-tags
+```
+
+The tag triggers `.github/workflows/release.yml`, which tests, builds and attaches the three files to a
+GitHub release. Install/update on other machines with the BRAT plugin (`yukixiii/keyfiler`).
